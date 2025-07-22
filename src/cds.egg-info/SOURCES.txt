@@ -1,0 +1,7 @@
+setup.py
+src/cds.egg-info/PKG-INFO
+src/cds.egg-info/SOURCES.txt
+src/cds.egg-info/dependency_links.txt
+src/cds.egg-info/entry_points.txt
+src/cds.egg-info/requires.txt
+src/cds.egg-info/top_level.txt

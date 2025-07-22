@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+openai
+jinja2
+markdown
+pandas
+numpy
+scipy

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='utf-8'>
+  <title>Data Analysis Report</title>
+  <style>
+    body { font-family: sans-serif; max-width:800px; margin:2em auto; line-height:1.6; }
+    pre  { background:#f4f4f4; padding:1em; overflow-x:auto; }
+    code { background:#eee; padding:0.2em 0.4em; }
+    table{ border-collapse:collapse; width:100%; margin:1em 0; }
+    th, td { border:1px solid #ccc; padding:0.5em; text-align:left; }
+    h1,h2,h3 { margin-top:1.5em; }
+  </style>
+</head>
+<body>
+<h1>🚀 Data Analysis Report</h1>
+<h2>Customer-Centric Highlights</h2>
+<p>{{ narrative }}</p>
+<hr />
+<h2>1. Dataset Snapshot</h2>
+<p>Your dataset contains <strong>{{ analysis.dataset_overview.num_rows }}</strong> records across <strong>{{ analysis.dataset_overview.num_columns }}</strong> fields, using about <strong>{{ analysis.dataset_overview.memory_usage_mb | round(2) }} MB</strong> of memory.</p>
+<blockquote>
+<p><strong>Takeaway:</strong> At this scale, you can iterate quickly—but very wide tables may slow down some analyses.</p>
+</blockquote>
+<hr />
+<h2>2. Data Quality Narrative</h2>
+<ul>
+<li><strong>Duplicate rows:</strong> {{ analysis.data_quality.duplicate_rows }}</li>
+<li><strong>Constant columns:</strong> {{ analysis.data_quality.constant_columns | length }}</li>
+</ul>
+<p><strong>Fields with high missing rates (&gt;20%):</strong>
+{% set any_miss = false %}
+{% for col, pct in analysis.data_quality.missing_value_percentage.items() %}
+  {% if pct &gt;= 20 %}
+    {% set any_miss = true %}
+    - <strong>{{ col }}</strong>: {{ pct }}% missing
+  {% endif %}
+{% endfor %}
+{% if not any_miss %}
+All fields have under 20% missingness—great!
+{% endif %}</p>
+<blockquote>
+<p><strong>Takeaway:</strong>
+{% if any_miss %}
+You’ll likely drop or impute the high-missing fields listed above before modeling.
+{% else %}
+No major missingness to worry about.
+{% endif %}</p>
+</blockquote>
+<hr />
+<h2>3. Distributions Narrative</h2>
+<p><strong>Numeric features summary:</strong>
+{% for col, dist in analysis.value_distributions.items() if dist.min is defined %}
+- <strong>{{ col }}</strong> ranges from {{ dist.min }} to {{ dist.max }} (mean = {{ dist.mean | round(2) }}, median = {{ dist.median }}), std = {{ dist.std | round(2) }} (skew = {{ dist.skew | round(2) }})
+{% endfor %}</p>
+<p><strong>Categorical features (top 3 categories):</strong>
+{% for col, dist in analysis.value_distributions.items() if dist.min is not defined %}
+- <strong>{{ col }}</strong> has {{ dist.unique_count }} unique values; top:
+  {% set count = 0 %}
+  {% for k, v in dist.top_values.items() %}
+    {% if count &lt; 3 %}
+      - {{ k }} ({{ v }})
+      {% set count = count + 1 %}
+    {% endif %}
+  {% endfor %}
+{% endfor %}</p>
+<blockquote>
+<p><strong>Takeaway:</strong>
+Log-transform any numeric with |skew| &gt; 1:
+{% set any_skew = false %}
+{% for col, dist in analysis.value_distributions.items() if dist.min is defined and (dist.skew &gt; 1 or dist.skew &lt; -1) %}
+  {% set any_skew = true %}
+  - {{ col }} (skew = {{ dist.skew | round(2) }})
+{% endfor %}
+{% if not any_skew %}
+None exceed |1|—your numeric distributions look fairly symmetric.
+{% endif %}</p>
+</blockquote>
+<hr />
+<h2>4. Correlations &amp; Outliers Narrative</h2>
+<p><strong>Outliers detected</strong> (|z| &gt; 3) in:
+{% set any_out = false %}
+{% for col, cnt in analysis.outliers.items() if cnt &gt; 0 %}
+  {% set any_out = true %}
+  - {{ col }}: {{ cnt }} records
+{% endfor %}
+{% if not any_out %}
+None—your numeric ranges are tight!
+{% endif %}</p>
+<p><strong>Top features correlated with price:</strong>
+{% for feat, r in analysis.correlations.price.items() if feat != "price" and (r &gt;= 0.6 or r &lt;= -0.6) %}
+- {{ feat }} (r = {{ r }})
+{% endfor %}</p>
+<blockquote>
+<p><strong>Takeaway:</strong>
+Trim or cap outliers listed above; prioritize strongly-correlated features in your first models.</p>
+</blockquote>
+<hr />
+<h2>5. Recommendations &amp; Next Steps</h2>
+<ol>
+<li><strong>Clean &amp; Impute</strong> – handle missingness in {% if any_miss %}the fields above{% else %}none needed{% endif %}.</li>
+<li><strong>Transform</strong> – apply log on skewed numerics if any.</li>
+<li><strong>Feature Selection</strong> – start with:
+   {% for feat, r in analysis.correlations.price.items() if feat != "price" and r &gt;= 0.8 %}</li>
+<li><strong>{{ feat }}</strong> (r = {{ r }})
+   {% endfor %}</li>
+<li><strong>Define Target</strong> – decide whether to predict <strong>price</strong>, <strong>fuel-efficiency</strong>, or another goal.</li>
+</ol>
+<blockquote>
+<p><strong>Roadmap:</strong>
+With clean data, transformed distributions, and high-impact features in hand, you’re set to explore your next ML or statistical workflow.</p>
+</blockquote>
+</body>
+</html>
