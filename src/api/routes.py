@@ -1,3 +1,5 @@
+# src/api/routes.py
+
 import os
 import json
 from fastapi import APIRouter, HTTPException
@@ -56,10 +58,10 @@ def analyze(req: AnalyzeRequest):
     narrative_md = resp.choices[0].message.content.strip()
 
     # 3) Load Jinja2 template and render the full report
-    # This assumes your detailed Jinja2 template is 'report_skeleton.md' in 'src/api/'
     try:
+        template_dir = os.path.dirname(__file__)
         env = Environment(
-            loader=FileSystemLoader("src/api"),
+            loader=FileSystemLoader(template_dir),
             trim_blocks=True,
             lstrip_blocks=True
         )
@@ -67,11 +69,8 @@ def analyze(req: AnalyzeRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Template loading failed: {e}")
 
-    # Render the template with both analysis data and the generated narrative
-    # Your template should expect 'analysis' (dict) and 'narrative' (string)
+    # 4) Render and write output
     full_md = template.render(analysis=analysis_data, narrative=narrative_md)
-
-    # 4) Write out report.md & report.html
     output_dir = os.getenv("REPORT_OUTPUT_DIR", ".")
     md_path, html_path = write_markdown_and_html_from_markdown(full_md, output_dir)
 
@@ -81,4 +80,28 @@ def analyze(req: AnalyzeRequest):
         analysis=analysis_data,
         md=md_path,
         html=html_path
+    )
+
+
+# src/api/app.py
+
+from fastapi import FastAPI
+from api.routes import router
+
+app = FastAPI(debug=True, title="Data Analysis API")
+app.include_router(router, prefix="/api")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "api.app:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
     )
